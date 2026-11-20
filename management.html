@@ -7,6 +7,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;700&family=Source+Serif+4:wght@600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <!-- Embedded-->
+  Auth.require('management'); 
+   <script>
+    console.log("Embedded JS");
+   </script>
+   
+  <!-- Week 8: the script, with defer -->
+  <script src="js/management.js" defer></script>
+  <script src="js/auth.js" defer></script>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", () => requireRole("management"));
+</script>
 </head>
 <body>
   <header>
@@ -23,6 +36,7 @@
       <li><a href="contact.html">Contact</a></li>
       <li><a href="organizer.html">Organizer</a></li>
       <li><a href="management.html">Management</a></li>
+      <a href="login.html" id="authLink">Log in</a>
     </ul>
   </nav>
 
