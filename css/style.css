@@ -174,3 +174,13 @@ th {
         width: 2.5rem;
     }
 }
+.login-box { max-width: 420px; margin: 40px auto; padding: 24px; background: #fff; border: 1px solid #dde2ec; border-radius: 12px; display: flex; flex-direction: column; gap: 10px; }
+.login-box input:not([type="radio"]) { padding: 10px; border: 1px solid #c9d0de; border-radius: 8px; font: inherit; }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.seg label { position: relative; }
+.seg input { position: absolute; opacity: 0; inset: 0; }
+.seg span { display: block; text-align: center; padding: 9px 4px; border: 1px solid #c9d0de; border-radius: 8px; cursor: pointer; }
+.seg input:checked + span { background: #dd6f02; border-color: #dd6f02; color: #fff; font-weight: 600; }
+.seg input:focus-visible + span { outline: 2px solid #04164a; outline-offset: 2px; }
+.login-btn { background: #04164a; color: #fff; border: 0; border-radius: 8px; padding: 11px; font: inherit; font-weight: 600; cursor: pointer; }
+.login-error { color: #b42318; margin: 0; min-height: 1.2em; }
