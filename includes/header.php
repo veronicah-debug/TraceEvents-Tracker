@@ -18,9 +18,9 @@ $role_link = [
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title><?php echo htmlspecialchars($page_title); ?> | Trace Events Tracker</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://googleapis.com">
+  <link rel="preconnect" href="https://gstatic.com" crossorigin>
+  <link href="https://googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <script src="js/main.js" defer></script>
   <link rel="icon" type="image/png" href="Images/University-Logo-Vertical-small-2.png">
@@ -32,7 +32,7 @@ $role_link = [
       <img class="logo" src="Images/University-Logo-Vertical-small-2.png" alt="Strathmore University logo">
       Trace Events Tracker
     </h1>
-    <p>Trace Events Tracker is a web-based system that combines event information, student registration or ticket tracking, attendance records and basic organizer budget estimation. It will support three roles: students, event organizers and authorized management.</p>
+  
   </header>
 
   <nav>
