@@ -1,78 +1,111 @@
 <?php
+// index.php
+declare(strict_types=1);
 require_once 'includes/db.php';
 require_once 'includes/auth.php';
-$page_title = 'Home';
-include 'includes/header.php';
 
-$error = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email    = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
-
-    if ($email === '' || $password === '') {
-        $error = 'Please enter both your email and password.';
-    } else {
-        $stmt = mysqli_prepare($conn, "SELECT user_id, full_name, password_hash, role FROM user WHERE email = ? AND active = 1");
-        mysqli_stmt_bind_param($stmt, 's', $email);
-        mysqli_stmt_execute($stmt);
-        $res = mysqli_stmt_get_result($stmt);
-        $user = mysqli_fetch_assoc($res);
-
-        if ($user && password_verify($password, $user['password_hash'])) {
-            $_SESSION['user_id']   = $user['user_id'];
-            $_SESSION['full_name'] = $user['full_name'];
-            $_SESSION['role']      = $user['role'];
-
-            if ($user['role'] === 'STUDENT') {
-                header('Location: events.php');
-            } elseif ($user['role'] === 'ORGANIZER') {
-                header('Location: organizer.php');
-            } else {
-                header('Location: management.php');
-            }
-            exit;
-        } else {
-            $error = 'Invalid email or password.';
-        }
-    }
+if (!empty($_SESSION['user_id']) && !empty($_SESSION['role'])) {
+    header('Location: ' . role_home($_SESSION['role']));
+    exit;
 }
+
+$errorMsg = '';
+if (isset($_GET['error']) && $_GET['error'] === 'access') {
+    $errorMsg = 'Access denied. Please sign in with an authorized account.';
+} elseif (isset($_GET['error']) && $_GET['error'] === 'invalid') {
+    $errorMsg = 'Invalid email/ID or password. Please try again.';
+} elseif (isset($_GET['error']) && $_GET['error'] === 'empty') {
+    $errorMsg = 'Please enter your university email/ID and password.';
+}
+
+$stmt = $conn->prepare(
+    "SELECT event_id, event_name, description, event_category, venue, image_path,
+            event_date, start_time, ticket_price
+     FROM event
+     WHERE event_status IN ('APPROVED', 'PUBLISHED')
+     ORDER BY event_date ASC
+     LIMIT 6"
+);
+$stmt->execute();
+$upcomingEvents = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
+
+$pageTitle = 'Home';
+include 'includes/header.php';
 ?>
-<main>
-  <section>
-    <h2>Discover. Register. Track.</h2>
-    <p>Welcome to the Strathmore University Trace Events Tracker. Browse upcoming campus events, register for your student tickets, and track attendance seamlessly.</p>
-    <p><a href="events.php" class="btn">Browse Events</a></p>
-  </section>
 
-  <?php if ($role === null) { ?>
-    <section class="login-card">
+<section class="hero">
+  <div class="container hero-grid">
+    <div>
+      <h1>Discover. Register.<br /><span>Track.</span></h1>
+      <p>
+        Browse upcoming Strathmore campus events, check event venue details,
+        track your digital ticket status, and support structured event budget planning.
+      </p>
+      <a href="events.php" class="btn btn-gold">Browse Events</a>
+    </div>
+
+    <div class="login-card" id="login-box">
       <h2>Log in</h2>
-      <?php if ($error !== '') { ?>
-        <p id="loginError" class="error"><?php echo e($error); ?></p>
-      <?php } ?>
-      <form action="index.php" method="post" id="loginForm">
-        <label for="email">Strathmore Email</label>
-        <input type="email" id="email" name="email" placeholder="student@strathmore.edu" required>
+      <?php if ($errorMsg !== ''): ?>
+        <div class="alert alert-error"><?= e($errorMsg) ?></div>
+      <?php endif; ?>
 
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" placeholder="Enter your password" required>
+      <form action="process-login.php" method="POST">
+        <div class="form-group">
+          <label for="login_id">Strathmore Email / Admission / ID</label>
+          <input type="text" id="login_id" name="login_id" class="form-control"
+                 placeholder="e.g. amina.kamau@example.test or DEMO/001" required />
+        </div>
 
-        <button type="submit" class="login-btn">Log in</button>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" class="form-control"
+                 placeholder="Enter your password" required />
+        </div>
+
+        <button type="submit" class="btn btn-purple btn-block">Log in</button>
       </form>
-    </section>
-  <?php } else { ?>
-    <section>
-      <h2>Welcome back, <?php echo e($_SESSION['full_name'] ?? 'User'); ?>!</h2>
-      <p>You are logged in as <strong><?php echo e($role); ?></strong>.</p>
-      <p><a href="<?php echo $role_link[$role][0]; ?>" class="btn">Go to <?php echo $role_link[$role][1]; ?></a></p>
-    </section>
-  <?php } ?>
-</main>
+    </div>
+  </div>
+</section>
 
-<aside>
-  <h3>Quick info</h3>
-  <p>Ticket sales close 24 hours before each event.</p>
-  <p><a href="events.php">View upcoming events</a></p>
-</aside>
+<section class="section-pad">
+  <div class="container">
+    <div class="section-header">
+      <h2>Upcoming Events &amp; Venues</h2>
+      <a href="events.php" class="btn btn-sm btn-purple">View All Events</a>
+    </div>
+
+    <?php if (empty($upcomingEvents)): ?>
+      <div class="card-panel"><p>No approved events scheduled right now.</p></div>
+    <?php else: ?>
+      <div class="events-grid">
+        <?php foreach ($upcomingEvents as $ev): ?>
+          <?php $imgSrc = resolve_event_image($ev['image_path'], $ev['venue'], $ev['event_category']); ?>
+          <article class="event-card">
+            <div class="event-media">
+              <img src="<?= e($imgSrc) ?>" alt="Venue: <?= e($ev['venue']) ?> - <?= e($ev['event_name']) ?>" />
+              <span class="event-place-badge">📍 <?= e($ev['venue']) ?></span>
+            </div>
+            <div class="event-body">
+              <div class="event-meta">
+                <?= e($ev['event_date']) ?> &bull; <?= e(substr($ev['start_time'], 0, 5)) ?>
+              </div>
+              <h3><?= e($ev['event_name']) ?></h3>
+              <p><?= e($ev['description'] ?? 'Campus student event.') ?></p>
+              <div class="event-price">
+                <?= ((float)$ev['ticket_price'] <= 0) ? 'Free Entry' : 'KES ' . number_format((float)$ev['ticket_price'], 2) ?>
+              </div>
+              <a href="events.php#event-<?= (int)$ev['event_id'] ?>" class="btn btn-gold btn-sm">
+                View &amp; Register
+              </a>
+            </div>
+          </article>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
+  </div>
+</section>
 
 <?php include 'includes/footer.php'; ?>

@@ -1,64 +1,80 @@
 <?php
+// my-tickets.php
+declare(strict_types=1);
 require_once 'includes/db.php';
 require_once 'includes/auth.php';
 require_role('STUDENT');
-$page_title = 'My Tickets';
+
+$studentId = (int)$_SESSION['user_id'];
+$flashSuccess = $_SESSION['flash_success'] ?? '';
+unset($_SESSION['flash_success']);
+
+$stmt = $conn->prepare(
+    "SELECT v.registration_id, v.registration_status, v.ticket_id, v.qr_reference,
+            v.ticket_status, v.issued_at, e.event_name, e.event_date, e.start_time,
+            e.venue, e.image_path, e.event_category, tt.type_name
+     FROM vw_student_ticket_status v
+     JOIN event e ON e.event_id = v.event_id
+     JOIN registration r ON r.registration_id = v.registration_id
+     JOIN ticket_type tt ON tt.ticket_type_id = r.ticket_type_id
+     WHERE v.user_id = ?
+     ORDER BY v.issued_at DESC"
+);
+$stmt->bind_param('i', $studentId);
+$stmt->execute();
+$tickets = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
+
+$pageTitle = 'My Tickets';
 include 'includes/header.php';
-
-$uid = $_SESSION['user_id'];
-$sql = "SELECT t.qr_reference, t.ticket_status, e.event_name, e.venue, e.event_date, e.start_time,
-               tt.type_name, a.check_in_time
-        FROM registration r
-        JOIN ticket t       ON t.registration_id = r.registration_id
-        JOIN event e        ON e.event_id = r.event_id
-        JOIN ticket_type tt ON tt.ticket_type_id = r.ticket_type_id
-        LEFT JOIN attendance a ON a.ticket_id = t.ticket_id AND a.attendance_status = 'PRESENT'
-        WHERE r.student_id = ?
-        ORDER BY e.event_date DESC";
-$stmt = mysqli_prepare($conn, $sql);
-mysqli_stmt_bind_param($stmt, 'i', $uid);
-mysqli_stmt_execute($stmt);
-$result = mysqli_stmt_get_result($stmt);
-$count = mysqli_num_rows($result);
 ?>
-<main>
-  <?php if (isset($_GET['msg']) && $_GET['msg'] === 'registered') { ?>
-    <p><strong>Ticket confirmed. Show the code below at the gate.</strong></p>
-  <?php } ?>
-  <p>Tickets held: <?php echo $count; ?></p>
 
-  <table>
-    <caption>Your tickets</caption>
-    <thead>
-      <tr><th>Ticket code</th><th>Event</th><th>Type</th><th>When</th><th>Venue</th><th>Status</th></tr>
-    </thead>
-    <tbody>
-    <?php
-    if ($count === 0) {
-        echo '<tr><td colspan="6">No tickets yet. <a href="events.php">Browse events</a>.</td></tr>';
-    } else {
-        while ($row = mysqli_fetch_assoc($result)) {
-            if ($row['ticket_status'] === 'CANCELLED') {
-                $status = 'Cancelled';
-            } elseif ($row['ticket_status'] === 'USED' || $row['check_in_time'] !== null) {
-                $status = 'Attended';
-            } elseif ($row['event_date'] < date('Y-m-d')) {
-                $status = 'Missed';
-            } else {
-                $status = 'Valid';
-            }
-            echo '<tr>';
-            echo '<td>' . e($row['qr_reference']) . '</td>';
-            echo '<td>' . e($row['event_name']) . '</td>';
-            echo '<td>' . e($row['type_name']) . '</td>';
-            echo '<td>' . date('D j M Y', strtotime($row['event_date'])) . ', ' . date('g:i A', strtotime($row['start_time'])) . '</td>';
-            echo '<td>' . e($row['venue']) . '</td>';
-            echo '<td>' . $status . '</td>';
-            echo '</tr>';
-        }
-    }
-    ?>
-    </tbody>
-  </table>
-</main>
+<section class="section-pad">
+  <div class="container">
+    <div class="section-header">
+      <h2>My Registrations &amp; Digital Tickets</h2>
+      <a href="events.php" class="btn btn-sm btn-purple">Browse More Events</a>
+    </div>
+
+    <?php if ($flashSuccess !== ''): ?>
+      <div class="alert alert-success"><?= e($flashSuccess) ?></div>
+    <?php endif; ?>
+
+    <?php if (empty($tickets)): ?>
+      <div class="card-panel">
+        <p>You have no event tickets yet. Visit <a href="events.php">Events</a> to register.</p>
+      </div>
+    <?php else: ?>
+      <div class="events-grid">
+        <?php foreach ($tickets as $t): ?>
+          <?php $imgSrc = resolve_event_image($t['image_path'], $t['venue'], $t['event_category']); ?>
+          <article class="event-card">
+            <div class="event-media">
+              <img src="<?= e($imgSrc) ?>" alt="Venue: <?= e($t['venue']) ?>" />
+              <span class="event-place-badge">📍 <?= e($t['venue']) ?></span>
+            </div>
+            <div class="event-body">
+              <h3><?= e($t['event_name']) ?></h3>
+              <div class="event-meta">
+                <?= e($t['event_date']) ?> &bull; <?= e(substr($t['start_time'], 0, 5)) ?><br />
+                Ticket Type: <strong><?= e($t['type_name']) ?></strong>
+              </div>
+              <p>
+                Registration: <strong><?= e($t['registration_status']) ?></strong><br />
+                Ticket Status: <strong><?= e($t['ticket_status'] ?? 'PENDING') ?></strong>
+              </p>
+              <?php if (!empty($t['qr_reference'])): ?>
+                <div style="background:#f5f0f7; padding:10px; border-radius:8px; font-family:monospace; font-size:0.88rem;">
+                  QR Code Ref:<br />
+                  <strong><?= e($t['qr_reference']) ?></strong>
+                </div>
+              <?php endif; ?>
+            </div>
+          </article>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
+  </div>
+</section>
+
 <?php include 'includes/footer.php'; ?>
